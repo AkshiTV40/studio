@@ -6,11 +6,12 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2 } from 'lucide-react';
+import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2, Navigation } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { runPanicDetection } from '@/app/actions';
 import type { DetectPanicAndAlertOutput } from '@/ai/flows/detect-panic-and-alert';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type Location = {
   latitude: number;
@@ -36,7 +37,9 @@ export default function GuardianKeychain() {
   const [location, setLocation] = useState<Location>(null);
   const [panicInfo, setPanicInfo] = useState<DetectPanicAndAlertOutput | null>(null);
   const [currentTime, setCurrentTime] = useState('');
+  const [hasGpsPermission, setHasGpsPermission] = useState<boolean | undefined>(undefined);
   const analysisInterval = useRef<NodeJS.Timeout | null>(null);
+  const locationWatcher = useRef<number | null>(null);
   const { toast } = useToast();
 
   const videoPlaceholder = PlaceHolderImages.find((img) => img.id === 'keychain-view');
@@ -48,29 +51,46 @@ export default function GuardianKeychain() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-      },
-      (error) => {
-        console.error('Error getting location:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Location Error',
-          description: 'Could not retrieve your location.',
-        });
-      }
-    );
+  const startLocationTracking = () => {
+    if (navigator.geolocation) {
+      locationWatcher.current = navigator.geolocation.watchPosition(
+        (position) => {
+          setHasGpsPermission(true);
+          setLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          setHasGpsPermission(false);
+          toast({
+            variant: 'destructive',
+            title: 'Location Error',
+            description: 'Could not retrieve your location. Please grant permission.',
+          });
+        }
+      );
+    } else {
+      setHasGpsPermission(false);
+      toast({
+        variant: 'destructive',
+        title: 'Location Error',
+        description: 'Geolocation is not supported by this browser.',
+      });
+    }
   };
 
+  const stopLocationTracking = () => {
+    if (locationWatcher.current !== null) {
+      navigator.geolocation.clearWatch(locationWatcher.current);
+      locationWatcher.current = null;
+    }
+  };
+
+
   const startAnalysis = () => {
-    // Immediately run once
     performAnalysis();
-    // Then set interval
     analysisInterval.current = setInterval(performAnalysis, 5000);
   };
 
@@ -82,12 +102,10 @@ export default function GuardianKeychain() {
   };
 
   const performAnalysis = async () => {
-    // In a real app, we would get the data URI from a video stream.
-    // For this demo, we pass a dummy string as the server action mocks the response.
     const result = await runPanicDetection('dummy-data-uri');
     setPanicInfo(result);
-    if(result.panicDetected) {
-       toast({
+    if (result.panicDetected) {
+      toast({
         title: `Panic Detected: ${result.alertLevel.toUpperCase()}`,
         description: `Actions taken: ${result.actionsTaken.join(', ')}`,
         variant: result.alertLevel === 'high' ? 'destructive' : 'default',
@@ -98,7 +116,7 @@ export default function GuardianKeychain() {
   const startCall = () => {
     setIsLoading(true);
     setTimeout(() => {
-      handleLocation();
+      startLocationTracking();
       setIsCalling(true);
       setIsLoading(false);
       startAnalysis();
@@ -112,19 +130,56 @@ export default function GuardianKeychain() {
   const endCall = () => {
     setIsCalling(false);
     stopAnalysis();
+    stopLocationTracking();
     setPanicInfo(null);
     setLocation(null);
+    setHasGpsPermission(undefined);
     toast({
       title: 'Call Ended',
     });
   };
 
   useEffect(() => {
-    // Cleanup on unmount
     return () => {
       stopAnalysis();
+      stopLocationTracking();
     };
   }, []);
+  
+  const LocationMap = () => (
+    <div className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
+      <MapPin className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
+      <div>
+        <h3 className="font-headline font-semibold">Live Location</h3>
+        {hasGpsPermission === false && (
+          <Alert variant="destructive" className="mt-2">
+            <AlertTitle>GPS Access Denied</AlertTitle>
+            <AlertDescription>
+              Please enable location services to share your position.
+            </AlertDescription>
+          </Alert>
+        )}
+        {hasGpsPermission && location ? (
+          <>
+            <p className="text-sm text-muted-foreground font-mono">
+              {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+            </p>
+            <a
+              href={`https://www.google.com/maps?q=${location.latitude},${location.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
+            >
+              <Navigation size={12} />
+              Open in Maps
+            </a>
+          </>
+        ) : (
+          hasGpsPermission !== false && <p className="text-sm text-muted-foreground">Tracking your position...</p>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <Card className="w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-200 dark:border-gray-800 bg-card">
@@ -181,19 +236,7 @@ export default function GuardianKeychain() {
               </div>
             </div>
             <div className="flex-grow p-4 space-y-4">
-               <div className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
-                <MapPin className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-headline font-semibold">Location Shared</h3>
-                  {location ? (
-                     <p className="text-sm text-muted-foreground font-mono">
-                      {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
-                    </p>
-                  ) : (
-                     <p className="text-sm text-muted-foreground">Getting coordinates...</p>
-                  )}
-                </div>
-              </div>
+              <LocationMap />
                <div className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
                 <ShieldAlert className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
                 <div>
