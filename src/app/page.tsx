@@ -2,31 +2,107 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/logo';
+import { Smartphone, ShieldCheck, Zap } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Home() {
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
-          <div className="flex justify-center mb-4">
-            <Logo className="h-12 w-12 text-primary" />
-          </div>
-          <CardTitle className="text-3xl font-bold">Guardian Keychain</CardTitle>
-          <CardDescription className="text-muted-foreground pt-2">
-            Your personal safety companion, always by your side.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-6">
-            In an emergency, every second counts. Our app provides a direct link to your guardians, shares your live location, and uses AI to analyze your surroundings for potential threats.
-          </p>
-          <Link href="/keychain">
-            <Button size="lg" className="w-full">
-              Open Guardian Keychain
-            </Button>
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
+      <header className="px-4 lg:px-6 h-14 flex items-center">
+        <Link href="#" className="flex items-center justify-center" prefetch={false}>
+          <Logo className="h-6 w-6" />
+          <span className="sr-only">Guardian Keychain</span>
+        </Link>
+        <nav className="ml-auto flex gap-4 sm:gap-6">
+          <Link href="#features" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            Features
           </Link>
-        </CardContent>
-      </Card>
-    </main>
+          <Link href="/keychain" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            App
+          </Link>
+        </nav>
+      </header>
+      <main className="flex-1">
+        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48">
+          <div className="container px-4 md:px-6">
+            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
+              <div className="flex flex-col justify-center space-y-4">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
+                    Your Personal Safety Companion
+                  </h1>
+                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
+                    Guardian Keychain provides peace of mind with live location sharing, AI-powered threat detection, and
+                    an instant connection to your loved ones.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 min-[400px]:flex-row">
+                  <Link
+                    href="/keychain"
+                    className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+                    prefetch={false}
+                  >
+                    Open App
+                  </Link>
+                </div>
+              </div>
+              <Image
+                src="https://picsum.photos/seed/101/600/600"
+                width="600"
+                height="600"
+                alt="Guardian Keychain App"
+                data-ai-hint="app interface mobile"
+                className="mx-auto aspect-square overflow-hidden rounded-xl object-cover sm:w-full lg:order-last"
+              />
+            </div>
+          </div>
+        </section>
+        <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-secondary">
+          <div className="container px-4 md:px-6">
+            <div className="flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="space-y-2">
+                <div className="inline-block rounded-lg bg-muted px-3 py-1 text-sm">Key Features</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Total Peace of Mind</h2>
+                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Our app is packed with features designed to keep you safe and connected when it matters most.
+                </p>
+              </div>
+            </div>
+            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
+              <div className="grid gap-1 text-center">
+                 <div className="flex justify-center">
+                    <Smartphone className="h-10 w-10 text-primary" />
+                 </div>
+                <h3 className="text-xl font-bold">Live View & Location</h3>
+                <p className="text-muted-foreground">
+                  Stream live video and share your precise GPS location with your designated guardians during an emergency call.
+                </p>
+              </div>
+              <div className="grid gap-1 text-center">
+                <div className="flex justify-center">
+                    <ShieldCheck className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold">Guardian Connection</h3>
+                <p className="text-muted-foreground">
+                  Instantly connect with a single tap, ensuring your trusted contacts are alerted and can see what you see.
+                </p>
+              </div>
+              <div className="grid gap-1 text-center">
+                <div className="flex justify-center">
+                    <Zap className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold">AI-Powered Analysis</h3>
+                <p className="text-muted-foreground">
+                  Our advanced AI analyzes the live feed for potential threats, providing an extra layer of security and awareness.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <footer className="flex flex-col gap-2 sm:flex-row py-6 w-full shrink-0 items-center px-4 md:px-6 border-t">
+        <p className="text-xs text-muted-foreground">&copy; 2024 Guardian Keychain. All rights reserved.</p>
+      </footer>
+    </div>
   );
 }

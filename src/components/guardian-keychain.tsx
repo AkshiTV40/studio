@@ -1,12 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2, Navigation } from 'lucide-react';
+import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2, Navigation, Video, VideoOff } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { runPanicDetection } from '@/app/actions';
 import type { DetectPanicAndAlertOutput } from '@/ai/flows/detect-panic-and-alert';
@@ -38,11 +36,12 @@ export default function GuardianKeychain() {
   const [panicInfo, setPanicInfo] = useState<DetectPanicAndAlertOutput | null>(null);
   const [currentTime, setCurrentTime] = useState('');
   const [hasGpsPermission, setHasGpsPermission] = useState<boolean | undefined>(undefined);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | undefined>(undefined);
   const analysisInterval = useRef<NodeJS.Timeout | null>(null);
   const locationWatcher = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
-
-  const videoPlaceholder = PlaceHolderImages.find((img) => img.id === 'keychain-view');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -50,6 +49,38 @@ export default function GuardianKeychain() {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const getCameraPermission = async () => {
+    if (hasCameraPermission === undefined) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+        setHasCameraPermission(true);
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+          variant: 'destructive',
+          title: 'Camera Access Denied',
+          description: 'Please enable camera permissions to show live video.',
+        });
+      }
+    }
+  };
+
+  const stopCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setHasCameraPermission(undefined);
+  }
 
   const startLocationTracking = () => {
     if (navigator.geolocation) {
@@ -115,6 +146,7 @@ export default function GuardianKeychain() {
 
   const startCall = () => {
     setIsLoading(true);
+    getCameraPermission();
     setTimeout(() => {
       startLocationTracking();
       setIsCalling(true);
@@ -131,6 +163,7 @@ export default function GuardianKeychain() {
     setIsCalling(false);
     stopAnalysis();
     stopLocationTracking();
+    stopCamera();
     setPanicInfo(null);
     setLocation(null);
     setHasGpsPermission(undefined);
@@ -143,6 +176,7 @@ export default function GuardianKeychain() {
     return () => {
       stopAnalysis();
       stopLocationTracking();
+      stopCamera();
     };
   }, []);
   
@@ -221,19 +255,21 @@ export default function GuardianKeychain() {
         ) : (
           <div className="min-h-[450px] flex flex-col">
             <div className="relative w-full aspect-video bg-gray-900">
-              {videoPlaceholder && (
-                <Image
-                  src={videoPlaceholder.imageUrl}
-                  alt={videoPlaceholder.description}
-                  data-ai-hint={videoPlaceholder.imageHint}
-                  fill
-                  style={{ objectFit: 'cover' }}
-                  priority
-                />
-              )}
-              <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                LIVE 360° VIEW
+              <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+              <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                LIVE
               </div>
+              {hasCameraPermission === false && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 text-white p-4">
+                  <VideoOff className="h-10 w-10 mb-2" />
+                  <h3 className="font-bold">Camera Not Available</h3>
+                  <p className="text-center text-sm">Please grant camera permission in your browser settings.</p>
+                </div>
+              )}
             </div>
             <div className="flex-grow p-4 space-y-4">
               <LocationMap />
