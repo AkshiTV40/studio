@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2, Navigation, Video, VideoOff } from 'lucide-react';
+import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2, Navigation, VideoOff, Users, AlertCircle } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { runPanicDetection } from '@/app/actions';
 import type { DetectPanicAndAlertOutput } from '@/ai/flows/detect-panic-and-alert';
@@ -37,6 +38,8 @@ export default function GuardianKeychain() {
   const [currentTime, setCurrentTime] = useState('');
   const [hasGpsPermission, setHasGpsPermission] = useState<boolean | undefined>(undefined);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | undefined>(undefined);
+  const [guardianCount, setGuardianCount] = useState(0);
+
   const analysisInterval = useRef<NodeJS.Timeout | null>(null);
   const locationWatcher = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -47,11 +50,27 @@ export default function GuardianKeychain() {
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }, 1000);
-    return () => clearInterval(timer);
+
+    // Check for guardians in local storage
+    const storedGuardians = localStorage.getItem('guardians');
+    if (storedGuardians) {
+      setGuardianCount(JSON.parse(storedGuardians).length);
+    }
+    
+    // Listen for storage changes to update guardian count
+    const handleStorageChange = () => {
+        const storedGuardians = localStorage.getItem('guardians');
+        setGuardianCount(storedGuardians ? JSON.parse(storedGuardians).length : 0);
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+        clearInterval(timer);
+        window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   const getCameraPermission = async () => {
-    if (hasCameraPermission === undefined) {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         streamRef.current = stream;
@@ -68,7 +87,6 @@ export default function GuardianKeychain() {
           description: 'Please enable camera permissions to show live video.',
         });
       }
-    }
   };
 
   const stopCamera = () => {
@@ -133,6 +151,7 @@ export default function GuardianKeychain() {
   };
 
   const performAnalysis = async () => {
+    // We are not passing real video data, this is a mock
     const result = await runPanicDetection('dummy-data-uri');
     setPanicInfo(result);
     if (result.panicDetected) {
@@ -144,17 +163,18 @@ export default function GuardianKeychain() {
     }
   };
 
-  const startCall = () => {
+  const startCall = async () => {
     setIsLoading(true);
-    getCameraPermission();
+    await getCameraPermission();
+    
     setTimeout(() => {
       startLocationTracking();
       setIsCalling(true);
       setIsLoading(false);
       startAnalysis();
       toast({
-        title: 'Call Started',
-        description: 'You are now connected with your guardian.',
+        title: 'Guardian Alert Sent',
+        description: `Notifying ${guardianCount} guardian${guardianCount !== 1 ? 's' : ''}.`,
       });
     }, 1500);
   };
@@ -231,15 +251,24 @@ export default function GuardianKeychain() {
 
       <CardContent className="p-0">
         {!isCalling ? (
-          <div className="flex flex-col items-center justify-center gap-8 p-8 min-h-[450px]">
+          <div className="flex flex-col items-center justify-center gap-6 p-8 min-h-[450px]">
             <div className="text-center">
               <h2 className="font-headline text-2xl font-bold text-foreground">In Case of Emergency</h2>
-              <p className="text-muted-foreground">Press the button to call for help</p>
+              <p className="text-muted-foreground">Press the button to alert your guardians</p>
             </div>
+             {guardianCount === 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>No Guardians Added</AlertTitle>
+                <AlertDescription>
+                  <Link href="/guardians" className="underline">Add guardians</Link> to be notified in an emergency.
+                </AlertDescription>
+              </Alert>
+            )}
             <Button
               onClick={startCall}
-              disabled={isLoading}
-              className="h-40 w-40 rounded-full bg-accent text-accent-foreground shadow-lg animate-pulse-strong flex flex-col gap-2 hover:bg-accent/90"
+              disabled={isLoading || guardianCount === 0}
+              className="h-40 w-40 rounded-full bg-accent text-accent-foreground shadow-lg animate-pulse-strong flex flex-col gap-2 hover:bg-accent/90 disabled:animate-none"
               aria-label="Start Emergency Call"
             >
               {isLoading ? (
@@ -251,10 +280,16 @@ export default function GuardianKeychain() {
                 </>
               )}
             </Button>
+            <Button variant="secondary" asChild>
+                <Link href="/guardians" className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Manage Guardians ({guardianCount})
+                </Link>
+            </Button>
           </div>
         ) : (
           <div className="min-h-[450px] flex flex-col">
-            <div className="relative w-full aspect-video bg-gray-900">
+            <div className="relative w-full aspect-[4/3] bg-gray-900">
               <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
               <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
                 <span className="relative flex h-2 w-2">

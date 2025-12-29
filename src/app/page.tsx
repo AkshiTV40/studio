@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/logo';
-import { Smartphone, ShieldCheck, Zap } from 'lucide-react';
+import { Smartphone, ShieldCheck, Zap, Users } from 'lucide-react';
 import Image from 'next/image';
 
 export default function Home() {
@@ -16,6 +16,9 @@ export default function Home() {
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Link href="#features" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
             Features
+          </Link>
+          <Link href="/guardians" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
+            Guardians
           </Link>
           <Link href="/keychain" className="text-sm font-medium hover:underline underline-offset-4" prefetch={false}>
             App
@@ -68,14 +71,23 @@ export default function Home() {
                 </p>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-3 lg:gap-12">
+            <div className="mx-auto grid max-w-5xl items-center gap-6 py-12 lg:grid-cols-4 lg:gap-10">
               <div className="grid gap-1 text-center">
                  <div className="flex justify-center">
                     <Smartphone className="h-10 w-10 text-primary" />
                  </div>
                 <h3 className="text-xl font-bold">Live View & Location</h3>
                 <p className="text-muted-foreground">
-                  Stream live video and share your precise GPS location with your designated guardians during an emergency call.
+                  Stream live video and share your precise GPS location with your designated guardians.
+                </p>
+              </div>
+               <div className="grid gap-1 text-center">
+                <div className="flex justify-center">
+                    <Users className="h-10 w-10 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold">Manage Guardians</h3>
+                <p className="text-muted-foreground">
+                  Easily add and manage your list of trusted emergency contacts.
                 </p>
               </div>
               <div className="grid gap-1 text-center">
@@ -84,7 +96,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold">Guardian Connection</h3>
                 <p className="text-muted-foreground">
-                  Instantly connect with a single tap, ensuring your trusted contacts are alerted and can see what you see.
+                  Instantly alert your trusted contacts with a single tap.
                 </p>
               </div>
               <div className="grid gap-1 text-center">
@@ -93,7 +105,7 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold">AI-Powered Analysis</h3>
                 <p className="text-muted-foreground">
-                  Our advanced AI analyzes the live feed for potential threats, providing an extra layer of security and awareness.
+                  Our AI analyzes the live feed for potential threats, providing an extra layer of security.
                 </p>
               </div>
             </div>
