@@ -307,7 +307,7 @@ export default function GuardianKeychain() {
                 <AlertTitle>No Guardians Added</AlertTitle>
                 <AlertDescription>
                   <Link href="/guardians" className="underline">Add guardians</Link> to be notified in an emergency.
-                </AIertDescription>
+                </AlertDescription>
               </Alert>
             )}
             <Button
