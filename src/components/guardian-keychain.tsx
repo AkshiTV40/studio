@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2, Navigation, VideoOff, Users, AlertCircle } from 'lucide-react';
+import { Phone, PhoneOff, MapPin, ShieldAlert, Wifi, BatteryFull, Loader2, Navigation, VideoOff, Users, AlertCircle, Video } from 'lucide-react';
 import { Logo } from '@/components/logo';
 import { runPanicDetection } from '@/app/actions';
 import type { DetectPanicAndAlertOutput } from '@/ai/flows/detect-panic-and-alert';
@@ -51,13 +52,11 @@ export default function GuardianKeychain() {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     }, 1000);
 
-    // Check for guardians in local storage
     const storedGuardians = localStorage.getItem('guardians');
     if (storedGuardians) {
       setGuardianCount(JSON.parse(storedGuardians).length);
     }
     
-    // Listen for storage changes to update guardian count
     const handleStorageChange = () => {
         const storedGuardians = localStorage.getItem('guardians');
         setGuardianCount(storedGuardians ? JSON.parse(storedGuardians).length : 0);
@@ -139,8 +138,9 @@ export default function GuardianKeychain() {
 
 
   const startAnalysis = () => {
-    performAnalysis();
-    analysisInterval.current = setInterval(performAnalysis, 5000);
+    // Run analysis immediately, then every 10 seconds
+    performAnalysis(); 
+    analysisInterval.current = setInterval(performAnalysis, 10000);
   };
 
   const stopAnalysis = () => {
@@ -151,14 +151,30 @@ export default function GuardianKeychain() {
   };
 
   const performAnalysis = async () => {
-    // We are not passing real video data, this is a mock
-    const result = await runPanicDetection('dummy-data-uri');
+    let videoDataUri = '';
+    
+    if (videoRef.current && videoRef.current.readyState >= 2) {
+      const canvas = document.createElement('canvas');
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        // Get a JPEG image for smaller size
+        videoDataUri = canvas.toDataURL('image/jpeg', 0.5);
+      }
+    }
+
+    setPanicInfo(null); // Set to null to show "Analyzing..."
+    const result = await runPanicDetection(videoDataUri);
     setPanicInfo(result);
+
     if (result.panicDetected) {
       toast({
         title: `Panic Detected: ${result.alertLevel.toUpperCase()}`,
-        description: `Actions taken: ${result.actionsTaken.join(', ')}`,
+        description: `Actions: ${result.actionsTaken.join(', ').replace(/_/g, ' ')}`,
         variant: result.alertLevel === 'high' ? 'destructive' : 'default',
+        duration: 5000,
       });
     }
   };
@@ -167,6 +183,7 @@ export default function GuardianKeychain() {
     setIsLoading(true);
     await getCameraPermission();
     
+    // A short delay to ensure camera is ready before first analysis
     setTimeout(() => {
       startLocationTracking();
       setIsCalling(true);
@@ -235,6 +252,34 @@ export default function GuardianKeychain() {
     </div>
   );
 
+  const AISafetyAnalysis = () => (
+    <div className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
+      <ShieldAlert className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
+      <div>
+        <h3 className="font-headline font-semibold">AI Safety Analysis</h3>
+          {panicInfo ? (
+          <div className="space-y-1 mt-1">
+            {panicInfo.panicDetected ? (
+              <>
+                <AlertLevelBadge level={panicInfo.alertLevel} />
+                  <p className="text-xs text-muted-foreground capitalize">
+                    Actions: {panicInfo.actionsTaken.join(', ').replace(/_/g, ' ')}
+                  </p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">No immediate threats detected.</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Analyzing surroundings...</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <Card className="w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden border-4 border-gray-200 dark:border-gray-800 bg-card">
       <CardHeader className="flex flex-row items-center justify-between p-3 bg-secondary/50">
@@ -256,13 +301,13 @@ export default function GuardianKeychain() {
               <h2 className="font-headline text-2xl font-bold text-foreground">In Case of Emergency</h2>
               <p className="text-muted-foreground">Press the button to alert your guardians</p>
             </div>
-             {guardianCount === 0 && (
+              {guardianCount === 0 && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>No Guardians Added</AlertTitle>
                 <AlertDescription>
                   <Link href="/guardians" className="underline">Add guardians</Link> to be notified in an emergency.
-                </AlertDescription>
+                </AIertDescription>
               </Alert>
             )}
             <Button
@@ -308,30 +353,9 @@ export default function GuardianKeychain() {
             </div>
             <div className="flex-grow p-4 space-y-4">
               <LocationMap />
-               <div className="flex items-start gap-3 p-3 bg-secondary/50 rounded-lg">
-                <ShieldAlert className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-headline font-semibold">AI Safety Analysis</h3>
-                   {panicInfo ? (
-                    <div className="space-y-1 mt-1">
-                      {panicInfo.panicDetected ? (
-                        <>
-                          <AlertLevelBadge level={panicInfo.alertLevel} />
-                           <p className="text-xs text-muted-foreground">
-                             Actions: {panicInfo.actionsTaken.join(', ').replace(/_/g, ' ')}
-                           </p>
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No immediate threats detected.</p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Analyzing surroundings...</p>
-                  )}
-                </div>
-              </div>
+              <AISafetyAnalysis />
             </div>
-             <CardFooter className="p-4">
+              <CardFooter className="p-4">
                 <Button onClick={endCall} variant="destructive" size="lg" className="w-full">
                   <PhoneOff className="mr-2 h-5 w-5" /> End Call
                 </Button>
